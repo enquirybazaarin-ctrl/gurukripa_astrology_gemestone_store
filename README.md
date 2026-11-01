@@ -54,3 +54,4 @@ npm run dev
 
 ## 📜 License
 Private & Proprietary - Guru Kripa Astrology & GemsTone.
+
