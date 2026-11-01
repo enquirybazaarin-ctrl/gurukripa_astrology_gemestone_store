@@ -1,0 +1,215 @@
+import { api } from './api';
+
+export interface OrderItem {
+    id: string;
+    productId: string;
+    name: string;
+    image: string;
+    price: number;
+    originalPrice?: number;
+    quantity: number;
+    variant?: { label: string; price: number; sku?: string };
+    pack?: { label: string; price: number };
+    style?: { label: string; priceAdjustment: number };
+    addOns?: { label: string; price: number }[];
+    fragrance?: string;
+    fragrances?: string[];
+    size?: string;
+    selectedAttributes?: { [key: string]: string };
+    giftCustomization?: {
+        occasion: string;
+        designId: string;
+        message: string;
+        price: number;
+        active: boolean;
+    };
+}
+
+export interface Order {
+    id: string;
+    orderNumber: string;
+    customer: {
+        name: string;
+        email: string;
+        phone: string;
+        address: string;
+    };
+    shippingAddress?: {
+        name: string;
+        phone: string;
+        email?: string;
+        address: string;
+        city: string;
+        state: string;
+        pincode: string;
+    };
+    items: OrderItem[];
+    subtotal: number;
+    shippingCharges: number;
+    total: number;
+    status: 'Pending' | 'Payment Success' | 'Pending Verification' | 'Confirmed' | 'Packed' | 'Shipped' | 'Delivered' | 'Cancelled';
+    paymentStatus: 'Paid' | 'Pending' | 'Failed';
+    paymentMethod: 'COD' | 'Online';
+    isVerified: boolean;
+    ipAddress?: string;
+    createdAt: string;
+    // Shipping additions
+    shipmentStatus?: 'Unshipped' | 'Label Generated' | 'Pickup Scheduled' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Returned';
+    courierName?: string;
+    courier?: string; // Legacy
+    awbNumber?: string;
+    trackingUrl?: string;
+    packageWeight?: number;
+    discount: number;
+    dimensions?: {
+        length: number;
+        width: number;
+        height: number;
+    };
+    shiprocketOrderId?: number;
+    shiprocketShipmentId?: number;
+    trackingHistory?: {
+        status: string;
+        activity: string;
+        location: string;
+        timestamp: string;
+    }[];
+}
+
+// Mock Data
+// Mock Data removed, using real API
+
+// Helper to map backend order to frontend Order interface
+const mapOrder = (o: any): Order => ({
+    id: o._id,
+    orderNumber: o.orderNumber,
+    customer: {
+        name: o.shippingAddress?.name || o.user?.name || 'Unknown',
+        email: o.shippingAddress?.email || o.user?.email || 'N/A',
+        phone: o.shippingAddress?.phone || o.user?.phone || 'N/A',
+        address: `${o.shippingAddress?.address}, ${o.shippingAddress?.city}, ${o.shippingAddress?.pincode}`
+    },
+    shippingAddress: o.shippingAddress,
+    items: o.items.map((i: any) => ({
+        id: i._id,
+        productId: i.product?._id,
+        name: i.name || i.product?.name,
+        image: i.image || i.product?.image,
+        price: i.price,
+        originalPrice: i.originalPrice,
+        quantity: i.quantity,
+        variant: i.variant,
+        pack: i.pack,
+        style: i.style,
+        addOns: i.addOns,
+        fragrance: i.fragrance,
+        fragrances: i.fragrances,
+        giftCustomization: i.giftCustomization,
+        size: i.size,
+        selectedAttributes: i.selectedAttributes
+    })),
+    subtotal: o.subtotal || 0,
+    shippingCharges: o.shippingCharges || 0,
+    total: o.total,
+    status: o.status === 'pending_payment' ? 'Pending' :
+        o.status === 'payment_success' ? 'Payment Success' :
+            o.status === 'pending_verification' ? 'Pending Verification' :
+                o.status === 'confirmed' ? 'Confirmed' :
+                    o.status === 'packed' ? 'Packed' :
+                        o.status === 'shipped' ? 'Shipped' :
+                            o.status === 'delivered' ? 'Delivered' :
+                                o.status === 'cancelled' ? 'Cancelled' : o.status,
+    paymentStatus: o.paymentStatus === 'verified' ? 'Paid' :
+        o.paymentStatus === 'failed' ? 'Failed' : 'Pending',
+    paymentMethod: o.paymentMethod === 'cod' ? 'COD' : 'Online',
+    isVerified: o.isVerified || false,
+    ipAddress: o.ipAddress,
+    createdAt: o.createdAt,
+    shipmentStatus: o.shipmentStatus || 'Unshipped',
+    courierName: o.courierName || o.courier,
+    courier: o.courier,
+    awbNumber: o.awbNumber,
+    trackingUrl: o.trackingUrl,
+    packageWeight: o.packageWeight,
+    discount: o.discount || 0,
+    dimensions: o.dimensions,
+    shiprocketOrderId: o.shiprocketOrderId,
+    shiprocketShipmentId: o.shiprocketShipmentId,
+    trackingHistory: o.trackingHistory || []
+});
+
+export const orderService = {
+    getOrders: async (page: number = 1, limit: number = 20) => {
+        const response = await api.get(`/orders/admin/all?page=${page}&limit=${limit}`);
+        const { orders, total, pages } = response.data.data;
+
+        // Map backend data to frontend model
+        // Map backend data to frontend model
+        const mappedOrders: Order[] = orders.map(mapOrder);
+
+        return { data: { orders: mappedOrders, total, pages } };
+    },
+
+    getOrderById: async (id: string) => {
+        try {
+            const response = await api.get(`/orders/${id}`);
+            // Assuming the API returns the order object in response.data.data
+            // If the structure is different, this needs adjustment.
+            const orderData = response.data.data?.order || response.data.data;
+            const mappedOrder = mapOrder(orderData);
+            return { data: { order: mappedOrder } };
+        } catch (error) {
+            console.error("Error fetching order by ID:", error);
+            throw error;
+        }
+    },
+
+    updateOrderStatus: async (id: string, status: string) => {
+        const backendStatus =
+            status === 'Pending' ? 'pending_payment' :
+                status === 'Confirmed' ? 'confirmed' :
+                    status === 'Packed' ? 'packed' :
+                        status === 'Shipped' ? 'shipped' :
+                            status === 'Delivered' ? 'delivered' :
+                                status === 'Cancelled' ? 'cancelled' : status;
+
+        const response = await api.patch(`/orders/${id}/status`, { status: backendStatus });
+        return response;
+    },
+
+    updateShippingDetails: async (id: string, shippingData: { courierName?: string; awbNumber?: string; trackingUrl?: string; packageWeight?: number }) => {
+        const response = await api.patch(`/orders/${id}/shipping`, shippingData);
+        return response;
+    },
+
+    manualVerifyOrder: async (id: string, isVerified: boolean) => {
+        const response = await api.post(`/orders/${id}/verify`, { isVerified });
+        return response.data;
+    },
+
+    deleteOrder: async (id: string) => {
+        const response = await api.delete(`/orders/${id}`);
+        return response.data;
+    },
+
+    // Shiprocket Actions
+    createShiprocketOrder: async (orderId: string) => {
+        const response = await api.post(`/orders/admin/shiprocket/create-order/${orderId}`);
+        return response.data;
+    },
+
+    generateShiprocketAWB: async (orderId: string) => {
+        const response = await api.post(`/orders/admin/shiprocket/generate-awb/${orderId}`);
+        return response.data;
+    },
+
+    getShiprocketLabel: async (shipmentId: number) => {
+        const response = await api.get(`/orders/admin/shiprocket/label/${shipmentId}`);
+        return response.data;
+    },
+
+    getShiprocketInvoice: async (orderId: string) => {
+        const response = await api.get(`/orders/${orderId}/invoice`);
+        return response.data;
+    }
+};

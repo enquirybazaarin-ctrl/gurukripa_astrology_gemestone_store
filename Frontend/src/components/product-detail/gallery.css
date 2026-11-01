@@ -1,0 +1,16 @@
+
+/* Override Swiper Pagination Colors */
+.swiper-pagination-bullet {
+    background: #ccc;
+    opacity: 0.6;
+    width: 6px;
+    height: 6px;
+}
+
+.swiper-pagination-bullet-active {
+    background: #000;
+    opacity: 1;
+    width: 20px;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}

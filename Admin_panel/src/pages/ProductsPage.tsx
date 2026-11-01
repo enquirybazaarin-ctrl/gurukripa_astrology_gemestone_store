@@ -1,0 +1,1964 @@
+import { useState, useEffect } from 'react';
+import {
+  FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiCheck,
+  FiPackage, FiDollarSign, FiImage, FiList, FiGlobe, FiLayers, FiMessageSquare, FiGift
+} from 'react-icons/fi';
+import { productService, Product } from '../services/product.service';
+import { categoryService, Category } from '../services/category.service';
+
+// --- Types ---
+type Tab = 'general' | 'pricing' | 'media' | 'specs' | 'seo' | 'linked' | 'faqs' | 'configuration' | 'gift' | 'display';
+
+interface ProductFormData extends Omit<Partial<Product>, 'addOns'> {
+  newImage?: string;
+  newTag?: string;
+  showOnHome?: boolean;
+  isBestSeller?: boolean;
+
+  // Universal Form Data
+  variants?: Array<{
+    _id?: string;
+    label: string;
+    sku?: string;
+    price: number;
+    originalPrice?: number;
+    stock?: number;
+    packs?: Array<{
+      _id?: string;
+      label: string;
+      quantity: number;
+      price: number;
+      originalPrice?: number;
+    }>;
+  }>;
+
+  styles?: Array<{
+    _id?: string;
+    label: string;
+    priceAdjustment: number;
+    image?: string;
+    color?: string;
+  }>;
+
+  addOns?: Array<{
+    _id?: string;
+    label: string;
+    price: number;
+    description?: string;
+    required?: boolean;
+  }>;
+
+  // Legacy (Keep for fallback if needed, or remove if fully replacing)
+  sizes?: Array<{ name: string; price: number }>;
+  fragrances?: string[];
+  colors?: Array<{
+    label: string;
+    hex: string;
+    image?: string;
+  }>;
+  packs?: Array<{
+    label: string;
+    quantity: number;
+    price: number;
+    originalPrice?: number;
+    pricingType?: 'auto' | 'fixed' | 'discount'; // Keep optional for legacy compatibility if needed
+    styles?: Array<{
+      label: string;
+      priceAdjustment: number;
+      image?: string;
+    }>;
+  }>;
+  allowMixedFragrance?: boolean;
+  giftOptions?: {
+    active: boolean;
+    price: number;
+    occasions: Array<{
+      id: string;
+      label: string;
+      designs: Array<{ id: string; image: string }>;
+    }>;
+  };
+  material?: string;
+  weight?: number;
+  specifications?: Array<{ key: string; value: string }>;
+  sortOrder?: number;
+  pdpLayout?: string[];
+}
+
+// --- Product Hook ---
+const useAdminProducts = (categoryId?: string) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProducts();
+  }, [categoryId]);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await productService.getProducts({
+        limit: 100,
+        category: categoryId || undefined
+      });
+      setProducts(response.data.products);
+    } catch (error) {
+      console.error("Failed to load products", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { products, loading, refetch: loadProducts };
+};
+
+// --- Skeleton Component ---
+const ProductSkeletonRow = () => (
+  <tr className="animate-pulse">
+    <td className="px-6 py-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-gray-200" />
+        <div className="space-y-2">
+          <div className="h-4 w-32 bg-gray-200 rounded" />
+          <div className="h-3 w-16 bg-gray-100 rounded" />
+        </div>
+      </div>
+    </td>
+    <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-100 rounded" /></td>
+    <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 rounded" /></td>
+    <td className="px-6 py-4"><div className="h-4 w-8 bg-gray-100 rounded" /></td>
+    <td className="px-6 py-4"><div className="h-4 w-12 bg-gray-200 rounded" /></td>
+    <td className="px-6 py-4 text-right">
+      <div className="flex justify-end gap-2 text-transparent">
+        <div className="w-8 h-8 rounded-lg bg-gray-100" />
+        <div className="w-8 h-8 rounded-lg bg-gray-100" />
+      </div>
+    </td>
+  </tr>
+);
+
+export const ProductsPage = () => {
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const { products, refetch: loadProducts, loading } = useAdminProducts(selectedCategoryId);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('general');
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Form State
+  const [formData, setFormData] = useState<ProductFormData>({});
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const data = await categoryService.getCategories();
+      if (data && data.categories) {
+        setCategories(data.categories);
+      } else if (Array.isArray(data)) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error("Failed to load categories", error);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    // Prefer categoryId for the form value if available (set by service)
+    let categoryId = '';
+
+    if (product.categoryId) {
+      categoryId = product.categoryId;
+    } else if (typeof product.category === 'object' && product.category !== null) {
+      categoryId = (product.category as any)._id; // Fallback if raw object
+    } else if (typeof product.category === 'string') {
+      categoryId = product.category; // Fallback if string ID (or arguably name if normalized, but ID expected)
+    }
+
+    setFormData({ ...product, category: categoryId } as any);
+    setActiveTab('general');
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setFormData({
+      status: 'draft',
+      images: [],
+      tags: [],
+      dimensions: {},
+      // attributes: {},
+      isBestSeller: false,
+      seo: {},
+      faqs: [],
+      sections: [],
+      giftOptions: {
+        active: false,
+        price: 49,
+        occasions: []
+      }
+    });
+    setActiveTab('general');
+    setIsModalOpen(true);
+  };
+
+  // --- Logic Helpers ---
+  const calculateDiscount = () => {
+    if (formData.originalPrice && formData.price) {
+      const discount = ((formData.originalPrice - formData.price) / formData.originalPrice) * 100;
+      return Math.round(discount);
+    }
+    return 0;
+  };
+
+  const handleAddTag = () => {
+    if (formData.newTag && !formData.tags?.includes(formData.newTag)) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...(prev.tags || []), prev.newTag!],
+        newTag: ''
+      }));
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags?.filter(t => t !== tagToRemove)
+    }));
+  };
+
+  const handleAddImage = () => {
+    if (formData.newImage) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), prev.newImage!],
+        newImage: ''
+      }));
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter((_, i) => i !== index)
+    }));
+  };
+
+  // --- FAQ Helpers ---
+  const handleAddFaq = () => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: [...(prev.faqs || []), { question: '', answer: '' }]
+    }));
+  };
+
+  const handleRemoveFaq = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: prev.faqs?.filter((_, i) => i !== index)
+    }));
+  };
+
+
+  const handleUpdateFaq = (index: number, field: 'question' | 'answer', value: string) => {
+    const newFaqs = [...(formData.faqs || [])];
+    newFaqs[index] = { ...newFaqs[index], [field]: value };
+    setFormData(prev => ({ ...prev, faqs: newFaqs }));
+  };
+
+  // --- Configuration Helpers ---
+
+
+  const handleAddFragrance = () => {
+    const frag = prompt("Enter Astrological Highlight or Certification (e.g. Govt Lab Certified, Ceylon Origin, Pran Pratishtha Energized):");
+    if (frag && !formData.fragrances?.includes(frag)) {
+      setFormData(prev => ({
+        ...prev,
+        fragrances: [...(prev.fragrances || []), frag]
+      }));
+    }
+  };
+
+  const handleRemoveFragrance = (frag: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fragrances: prev.fragrances?.filter(f => f !== frag)
+    }));
+  };
+
+
+
+
+  const handleSave = async () => {
+    try {
+      const errors: string[] = [];
+      if (!formData.title) errors.push("Title");
+      if (!formData.category) errors.push("Category");
+      if (formData.price === undefined || formData.price === null) errors.push("Price");
+
+      if (errors.length > 0) {
+        alert(`Please fill required fields: ${errors.join(", ")}`);
+
+        // Auto-switch tabs to help user
+        if (!formData.title || !formData.category) {
+          setActiveTab('general');
+        } else if (formData.price === undefined || formData.price === null) {
+          setActiveTab('pricing');
+        }
+        return;
+      }
+
+      // Sanitize Data
+      const sanitizedVariants = formData.variants?.filter(v => v.label && v.label.trim() !== '').map(v => ({
+        ...v,
+        packs: v.packs?.filter(p => p.label && p.label.trim() !== '') // Remove empty packs
+      }));
+
+      // if variants exist but are all empty/filtered out, send empty array or keep? 
+      // If user intended to have variants but left them blank, they are removed here.
+
+      const payload = {
+        ...formData,
+        variants: sanitizedVariants,
+        name: formData.title,
+        description: formData.description || formData.shortDescription || formData.title,
+      };
+
+      if (formData.id || formData._id) {
+        await productService.updateProduct((formData.id || formData._id) as string, payload);
+      } else {
+        await productService.createProduct(payload);
+      }
+      setIsModalOpen(false);
+      loadProducts(); // Refresh list
+    } catch (error: any) {
+      console.error("Failed to save product", error);
+
+      let errorMessage = "Failed to save product";
+
+      // Try to extract backend error message
+      if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message; // Fallback
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // If it's still an object (unlikely with above checks, but safety first)
+      if (typeof errorMessage === 'object') {
+        errorMessage = JSON.stringify(errorMessage);
+      }
+
+      alert(`Error: ${errorMessage}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this product?")) {
+      try {
+        await productService.deleteProduct(id);
+        loadProducts();
+      } catch (error) {
+        console.error("Failed to delete product", error);
+        alert("Failed to delete product");
+      }
+    }
+  };
+
+  const filteredProducts = products.filter(p =>
+    p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // --- Gift Options Helpers ---
+  const handleAddOccasion = () => {
+    const label = prompt("Enter Occasion Name (e.g. Birthday):");
+    if (label) {
+      const id = label.toLowerCase().replace(/\s+/g, '-');
+      setFormData(prev => ({
+        ...prev,
+        giftOptions: {
+          ...(prev.giftOptions || { active: false, price: 49, occasions: [] }),
+          occasions: [...(prev.giftOptions?.occasions || []), { id, label, designs: [] }]
+        }
+      }));
+    }
+  };
+
+  const handleRemoveOccasion = (index: number) => {
+    if (confirm("Remove this occasion?")) {
+      const newOccasions = [...(formData.giftOptions?.occasions || [])];
+      newOccasions.splice(index, 1);
+      setFormData(prev => ({
+        ...prev,
+        giftOptions: { ...prev.giftOptions!, occasions: newOccasions }
+      }));
+    }
+  };
+
+  const handleAddDesign = (occIndex: number) => {
+    const imageUrl = prompt("Enter Design Image URL:");
+    if (imageUrl) {
+      const newOccasions = [...(formData.giftOptions?.occasions || [])];
+      const id = `design-${Date.now()}`;
+      newOccasions[occIndex].designs.push({ id, image: imageUrl });
+      setFormData(prev => ({
+        ...prev,
+        giftOptions: { ...prev.giftOptions!, occasions: newOccasions }
+      }));
+    }
+  };
+
+  const handleRemoveDesign = (occIndex: number, designIndex: number) => {
+    const newOccasions = [...(formData.giftOptions?.occasions || [])];
+    newOccasions[occIndex].designs = newOccasions[occIndex].designs.filter((_, i) => i !== designIndex);
+    setFormData({ ...formData, giftOptions: { ...formData.giftOptions!, occasions: newOccasions } });
+  };
+
+  // --- Custom Spec Helpers ---
+  const handleAddCustomSpec = () => {
+    const specs = formData.specifications || [];
+    setFormData({
+      ...formData,
+      specifications: [...specs, { key: "", value: "" }]
+    });
+  };
+
+  const handleUpdateCustomSpec = (index: number, field: 'key' | 'value', value: string) => {
+    const specs = [...(formData.specifications || [])];
+    specs[index] = { ...specs[index], [field]: value };
+    setFormData({ ...formData, specifications: specs });
+  };
+
+  const handleRemoveCustomSpec = (index: number) => {
+    const specs = (formData.specifications || []).filter((_, i) => i !== index);
+    setFormData({ ...formData, specifications: specs });
+  };
+
+  // --- Render Tabs ---
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'general':
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Title *</label>
+                <input
+                  type="text"
+                  value={formData.title || ''}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Natural Ceylon Yellow Sapphire (Pukhraj) 5.25 Ratti - Certified"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
+                <input
+                  type="text"
+                  value={formData.slug || ''}
+                  onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
+                  placeholder="auto-generated-from-title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <select
+                  value={formData.category || ''}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Product Type Selector Removed */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status || 'draft'}
+                  onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div >
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Description (Required)</label>
+              <textarea
+                rows={4}
+                value={formData.description || ''}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter detailed product description..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Short Description</label>
+              <textarea
+                rows={2}
+                value={formData.shortDescription || ''}
+                onChange={e => setFormData({ ...formData, shortDescription: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  checked={formData.showOnHome || false}
+                  onChange={e => setFormData({ ...formData, showOnHome: e.target.checked })}
+                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
+                />
+                <span className="text-gray-700">Show on Home Page</span>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="checkbox"
+                  checked={formData.isBestSeller || false}
+                  onChange={e => setFormData({ ...formData, isBestSeller: e.target.checked })}
+                  className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 border-gray-300"
+                />
+                <span className="text-gray-700 font-medium">Mark as Best Seller</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags (Badges)</label>
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {formData.tags?.map(tag => (
+                  <span key={tag} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    {tag}
+                    <button onClick={() => handleRemoveTag(tag)}><FiX /></button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.newTag || ''}
+                  onChange={e => setFormData({ ...formData, newTag: e.target.value })}
+                  placeholder="Add tag (e.g. Best Seller)"
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg"
+                />
+                <button onClick={handleAddTag} className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Add</button>
+              </div>
+            </div>
+          </div >
+        );
+
+      case 'pricing':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Selling Price (₹)</label>
+                <input
+                  type="number"
+                  value={formData.price || ''}
+                  onChange={e => setFormData({ ...formData, price: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-semibold"
+                />
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Original Price (MRP)</label>
+                <input
+                  type="number"
+                  value={formData.originalPrice || ''}
+                  onChange={e => setFormData({ ...formData, originalPrice: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex items-center justify-center bg-green-50 p-4 rounded-lg border border-green-100 flex-col">
+                <span className="text-sm text-green-600 font-medium">Auto-Calculated Discount</span>
+                <span className="text-3xl font-bold text-green-700">{calculateDiscount()}% OFF</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (Internal)</label>
+                <input
+                  type="number"
+                  value={formData.costPrice || ''}
+                  onChange={e => setFormData({ ...formData, costPrice: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  placeholder="For profit calculation"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
+                <select
+                  value={formData.taxRate || 18}
+                  onChange={e => setFormData({ ...formData, taxRate: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                >
+                  <option value="5">5% (GST)</option>
+                  <option value="12">12% (GST)</option>
+                  <option value="18">18% (GST)</option>
+                  <option value="28">28% (GST)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Inventory</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+                  <input
+                    type="text"
+                    value={formData.sku || ''}
+                    onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                  <input
+                    type="number"
+                    value={formData.stock || ''}
+                    onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-6">
+                  <input
+                    type="checkbox"
+                    checked={formData.allowBackorders || false}
+                    onChange={e => setFormData({ ...formData, allowBackorders: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded"
+                  />
+                  <span className="text-gray-700">Allow Backorders</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'media':
+        return (
+          <div className="space-y-6">
+            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-100 transition-colors cursor-pointer">
+              <FiImage className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-600 font-medium">Drag and drop images here, or click to browse</p>
+              <p className="text-gray-400 text-sm mt-1">Supports JPG, PNG, WEBP</p>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={formData.newImage || ''}
+                onChange={e => setFormData({ ...formData, newImage: e.target.value })}
+                placeholder="Or paste Image URL here..."
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg"
+              />
+              <button onClick={handleAddImage} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Add URL</button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {formData.images?.map((img, idx) => (
+                <div key={idx} className="relative group rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100">
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <FiX className="w-4 h-4" />
+                  </button>
+                  {idx === 0 && (
+                    <span className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">Primary</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'specs':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Material (Optional)</label>
+                <input
+                  type="text"
+                  value={formData.material || ''}
+                  onChange={e => setFormData({ ...formData, material: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  placeholder="e.g. 100% Natural Gemstone, Panchdhatu, 925 Silver, 22K Gold"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Finish / Color (Optional)</label>
+                <input
+                  type="text"
+                  value={formData.finish || ''}
+                  onChange={e => setFormData({ ...formData, finish: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                  placeholder="e.g. Natural Untreated, Deep Royal Blue, Pigeon Blood Red"
+                />
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Gemstone Sizing & Weight (रत्ती / माप)</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ratti / Carat (wt)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.capacity || ''}
+                    onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                    placeholder="e.g. 5.25"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dimensions (mm)</label>
+                  <input
+                    type="number"
+                    value={formData.dimensions?.width || ''}
+                    onChange={e => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: Number(e.target.value) } })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                    placeholder="Width / Dia"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Length (mm)</label>
+                  <input
+                    type="number"
+                    value={formData.dimensions?.height || ''}
+                    onChange={e => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: Number(e.target.value) } })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                    placeholder="Height / Length"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gross Weight (grams)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.weight || ''}
+                    onChange={e => setFormData({ ...formData, weight: Number(e.target.value) })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                    placeholder="e.g. 1.05"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-gray-800">Custom Specifications</h3>
+                <button
+                  onClick={handleAddCustomSpec}
+                  className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 font-medium flex items-center gap-1"
+                >
+                  <FiPlus className="w-4 h-4" /> Add Spec
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {formData.specifications?.map((spec, idx) => (
+                  <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg relative group">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Label</label>
+                      <input
+                        type="text"
+                        value={spec.key}
+                        onChange={(e) => handleUpdateCustomSpec(idx, 'key', e.target.value)}
+                        className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        placeholder="e.g. RAM"
+                      />
+                    </div>
+                    <div className="flex-[2]">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Value</label>
+                      <input
+                        type="text"
+                        value={spec.value}
+                        onChange={(e) => handleUpdateCustomSpec(idx, 'value', e.target.value)}
+                        className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        placeholder="e.g. 8GB"
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleRemoveCustomSpec(idx)}
+                      className="mt-6 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {(!formData.specifications || formData.specifications.length === 0) && (
+                  <div className="text-center py-6 bg-gray-50 rounded-xl border-2 border-dashed border-gray-100 italic text-gray-400 text-sm">
+                    No custom specifications added. Click "Add Spec" to begin.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'seo':
+        return (
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <h4 className="font-semibold text-blue-900 text-sm mb-2">Search Preview</h4>
+              <div className="bg-white p-3 rounded shadow-sm border border-blue-100 max-w-xl">
+                <div className="text-xl text-blue-600 truncate">{formData.seo?.metaTitle || formData.title}</div>
+                <div className="text-sm text-green-700">yoursite.com/products/{formData.slug || 'product-url'}</div>
+                <div className="text-sm text-gray-600 line-clamp-2">{formData.seo?.metaDescription || formData.shortDescription}</div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title</label>
+              <input
+                type="text"
+                value={formData.seo?.metaTitle || ''}
+                onChange={e => setFormData({ ...formData, seo: { ...formData.seo, metaTitle: e.target.value } })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                placeholder="Recommended: 60 chars"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description</label>
+              <textarea
+                rows={3}
+                value={formData.seo?.metaDescription || ''}
+                onChange={e => setFormData({ ...formData, seo: { ...formData.seo, metaDescription: e.target.value } })}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                placeholder="Recommended: 160 chars"
+              />
+            </div>
+          </div>
+        );
+
+      case 'faqs':
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-800">Frequently Asked Questions</h3>
+              <button
+                onClick={handleAddFaq}
+                className="text-sm bg-blue-50 text-blue-600 px-3 py-2 rounded-lg hover:bg-blue-100 font-medium flex items-center gap-1"
+              >
+                <FiPlus className="w-4 h-4" /> Add Question
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {formData.faqs?.map((faq, index) => (
+                <div key={index} className="bg-gray-50 border border-gray-200 p-4 rounded-xl relative group hover:shadow-sm transition-shadow">
+                  <button
+                    onClick={() => handleRemoveFaq(index)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-red-500 bg-white p-1 rounded-full shadow-sm"
+                  >
+                    <FiTrash2 size={14} />
+                  </button>
+                  <div className="space-y-3 pr-8">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Question</label>
+                      <input
+                        placeholder="e.g. Is this dishwasher safe?"
+                        value={faq.question}
+                        onChange={e => handleUpdateFaq(index, 'question', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Answer</label>
+                      <textarea
+                        placeholder="e.g. Yes, it is top-rack dishwasher safe."
+                        value={faq.answer}
+                        onChange={e => handleUpdateFaq(index, 'answer', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {(!formData.faqs || formData.faqs.length === 0) && (
+              <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                <FiMessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No FAQs added for this product.</p>
+                <button onClick={handleAddFaq} className="text-blue-600 font-medium text-sm mt-2 hover:underline">Add the first question</button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'configuration':
+        return (
+          <div className="space-y-8">
+            {/* --- PACKS SECTION (BASE PRODUCT) --- */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <FiPackage className="text-blue-600" /> Base Product Packs
+                  </h3>
+                  <p className="text-sm text-gray-500">Configure packs for the base product (e.g., Pack of 1, Pack of 2). This overrides the single price if selected.</p>
+                </div>
+                <button
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    packs: [...(prev.packs || []), {
+                      label: '', quantity: 1, price: prev.price || 0, originalPrice: prev.originalPrice || 0, pricingType: 'fixed'
+                    }]
+                  }))}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                >
+                  <FiPlus /> Add Pack
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {(!formData.packs || formData.packs.length === 0) && (
+                  <div className="text-center py-8 text-gray-400">
+                    No packs configured. The product will be sold as a single unit or via variants.
+                  </div>
+                )}
+                {formData.packs?.map((pack, pIndex) => (
+                  <div key={pIndex} className="bg-gray-50/50 border border-gray-100 rounded-xl p-4 relative group">
+                    <button
+                      onClick={() => {
+                        const newPacks = formData.packs?.filter((_, i) => i !== pIndex);
+                        setFormData({ ...formData, packs: newPacks });
+                      }}
+                      className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Pack Label</label>
+                        <input
+                          placeholder="e.g. Pack of 2"
+                          value={pack.label}
+                          onChange={e => {
+                            const newPacks = (formData.packs || []).map((p, i) =>
+                              i === pIndex ? { ...p, label: e.target.value } : p
+                            );
+                            setFormData({ ...formData, packs: newPacks });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Quantity</label>
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={pack.quantity}
+                          onChange={e => {
+                            const newPacks = (formData.packs || []).map((p, i) =>
+                              i === pIndex ? { ...p, quantity: Number(e.target.value) } : p
+                            );
+                            setFormData({ ...formData, packs: newPacks });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Price (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={pack.price || ''} // Handle undefined
+                          onChange={e => {
+                            const newPacks = (formData.packs || []).map((p, i) =>
+                              i === pIndex ? { ...p, price: Number(e.target.value) } : p
+                            );
+                            setFormData({ ...formData, packs: newPacks });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Original Price (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="MRP"
+                          value={pack.originalPrice || ''} // Handle undefined
+                          onChange={e => {
+                            const newPacks = (formData.packs || []).map((p, i) =>
+                              i === pIndex ? { ...p, originalPrice: Number(e.target.value) } : p
+                            );
+                            setFormData({ ...formData, packs: newPacks });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pack Specific Styles */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex justify-between items-center mb-3">
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Pack Specific Styles (e.g. With Cap, Gift Box)</label>
+                        <button
+                          onClick={() => {
+                            const newPacks = [...(formData.packs || [])];
+                            const currentPack = { ...newPacks[pIndex] };
+                            if (!currentPack.styles) currentPack.styles = [];
+                            currentPack.styles.push({ label: '', priceAdjustment: 0 });
+                            newPacks[pIndex] = currentPack;
+                            setFormData({ ...formData, packs: newPacks });
+                          }}
+                          className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-1 rounded hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                        >
+                          <FiPlus size={10} /> Add Style to Pack
+                        </button>
+                      </div>
+
+                      {(!pack.styles || pack.styles.length === 0) && (
+                        <p className="text-[11px] text-gray-400 italic mb-2">No specific styles for this pack. Global product styles will be used if available.</p>
+                      )}
+
+                      <div className="space-y-2">
+                        {pack.styles?.map((style, sIndex) => (
+                          <div key={sIndex} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                            <input
+                              placeholder="Style Name"
+                              value={style.label}
+                              onChange={e => {
+                                const newPacks = [...(formData.packs || [])];
+                                const currentPack = { ...newPacks[pIndex] };
+                                const currentStyles = [...(currentPack.styles || [])];
+                                currentStyles[sIndex] = { ...currentStyles[sIndex], label: e.target.value };
+                                currentPack.styles = currentStyles;
+                                newPacks[pIndex] = currentPack;
+                                setFormData({ ...formData, packs: newPacks });
+                              }}
+                              className="flex-1 px-2 py-1 border border-gray-100 rounded text-xs outline-none focus:ring-1 focus:ring-blue-400"
+                            />
+                            <div className="relative w-24">
+                              <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-[10px]">₹</span>
+                              <input
+                                type="number"
+                                placeholder="Price"
+                                value={style.priceAdjustment === 0 ? '' : style.priceAdjustment}
+                                onChange={e => {
+                                  const newPacks = [...(formData.packs || [])];
+                                  const currentPack = { ...newPacks[pIndex] };
+                                  const currentStyles = [...(currentPack.styles || [])];
+                                  currentStyles[sIndex] = { ...currentStyles[sIndex], priceAdjustment: Number(e.target.value) };
+                                  currentPack.styles = currentStyles;
+                                  newPacks[pIndex] = currentPack;
+                                  setFormData({ ...formData, packs: newPacks });
+                                }}
+                                className="w-full pl-5 pr-1 py-1 border border-gray-100 rounded text-xs font-bold text-blue-700 outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                            </div>
+                            <button
+                              onClick={() => {
+                                const newPacks = [...(formData.packs || [])];
+                                const currentPack = { ...newPacks[pIndex] };
+                                currentPack.styles = currentPack.styles?.filter((_, i) => i !== sIndex);
+                                newPacks[pIndex] = currentPack;
+                                setFormData({ ...formData, packs: newPacks });
+                              }}
+                              className="text-gray-300 hover:text-red-500 transition-colors"
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* --- VARIANTS SECTION --- */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <FiLayers className="text-blue-600" /> Product Variants
+                  </h3>
+                  <p className="text-sm text-gray-500">Add different sizes, colors, or material variations for this product.</p>
+                </div>
+                <button
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    variants: [...(prev.variants || []), {
+                      label: '', price: prev.price || 0, stock: 0, packs: []
+                    }]
+                  }))}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                >
+                  <FiPlus /> Add Variant
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4">
+                {formData.variants?.map((variant, vIndex) => (
+                  <div key={vIndex} className="bg-gray-50/50 border border-gray-100 rounded-xl p-4 relative group">
+                    <button
+                      onClick={() => {
+                        const newVariants = formData.variants?.filter((_, i) => i !== vIndex);
+                        setFormData({ ...formData, variants: newVariants });
+                      }}
+                      className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Variant Label</label>
+                        <input
+                          placeholder="e.g. Small, Red, 500ml"
+                          value={variant.label}
+                          onChange={e => {
+                            const newVariants = (formData.variants || []).map((v, i) =>
+                              i === vIndex ? { ...v, label: e.target.value } : v
+                            );
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">SKU</label>
+                        <input
+                          placeholder="SKU"
+                          value={variant.sku || ''}
+                          onChange={e => {
+                            const newVariants = (formData.variants || []).map((v, i) =>
+                              i === vIndex ? { ...v, sku: e.target.value } : v
+                            );
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Price (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={variant.price}
+                          onChange={e => {
+                            const newVariants = (formData.variants || []).map((v, i) =>
+                              i === vIndex ? { ...v, price: Number(e.target.value) } : v
+                            );
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none font-semibold text-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">MRP (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="MRP"
+                          value={variant.originalPrice || ''}
+                          onChange={e => {
+                            const newVariants = (formData.variants || []).map((v, i) =>
+                              i === vIndex ? { ...v, originalPrice: e.target.value ? Number(e.target.value) : undefined } : v
+                            );
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none text-gray-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Stock</label>
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={variant.stock}
+                          onChange={e => {
+                            const newVariants = (formData.variants || []).map((v, i) =>
+                              i === vIndex ? { ...v, stock: Number(e.target.value) } : v
+                            );
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Packs */}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase">Pack Options</span>
+                        <button
+                          onClick={() => {
+                            const newVariants = [...(formData.variants || [])];
+                            if (!newVariants[vIndex].packs) newVariants[vIndex].packs = [];
+                            newVariants[vIndex].packs!.push({ label: 'Pack of ', quantity: 2, price: 0 });
+                            setFormData({ ...formData, variants: newVariants });
+                          }}
+                          className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                          <FiPlus size={10} /> Add Pack
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                        {variant.packs?.map((pack, pIndex) => (
+                          <div key={pIndex} className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative group/pack">
+                            <button
+                              onClick={() => {
+                                const newVariants = (formData.variants || []).map((v, i) => {
+                                  if (i !== vIndex) return v;
+                                  return { ...v, packs: v.packs?.filter((_, j) => j !== pIndex) };
+                                });
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="absolute -top-2 -right-2 bg-white text-gray-400 hover:text-red-500 rounded-full shadow-md p-1 opacity-0 group-hover/pack:opacity-100 transition-opacity z-10"
+                            >
+                              <FiX size={14} />
+                            </button>
+
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                              <div className="col-span-2">
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pack Label</label>
+                                <input
+                                  placeholder="e.g. Pack of 2"
+                                  value={pack.label}
+                                  onChange={e => {
+                                    const newVariants = (formData.variants || []).map((v, i) => {
+                                      if (i !== vIndex) return v;
+                                      const newPacks = (v.packs || []).map((p, j) =>
+                                        j === pIndex ? { ...p, label: e.target.value } : p
+                                      );
+                                      return { ...v, packs: newPacks };
+                                    });
+                                    setFormData({ ...formData, variants: newVariants });
+                                  }}
+                                  className="w-full px-3 py-1.5 border border-gray-100 rounded-lg text-xs bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Quantity</label>
+                                <input
+                                  type="number"
+                                  placeholder="2"
+                                  value={pack.quantity}
+                                  onChange={e => {
+                                    const newVariants = (formData.variants || []).map((v, i) => {
+                                      if (i !== vIndex) return v;
+                                      const newPacks = (v.packs || []).map((p, j) =>
+                                        j === pIndex ? { ...p, quantity: Number(e.target.value) } : p
+                                      );
+                                      return { ...v, packs: newPacks };
+                                    });
+                                    setFormData({ ...formData, variants: newVariants });
+                                  }}
+                                  className="w-full px-2 py-1.5 border border-gray-100 rounded-lg text-xs text-center font-bold bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-700 uppercase mb-1">Selling Price</label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-xs">₹</span>
+                                  <input
+                                    type="number"
+                                    placeholder="Price"
+                                    value={pack.price}
+                                    onChange={e => {
+                                      const newVariants = (formData.variants || []).map((v, i) => {
+                                        if (i !== vIndex) return v;
+                                        const newPacks = (v.packs || []).map((p, j) =>
+                                          j === pIndex ? { ...p, price: Number(e.target.value) } : p
+                                        );
+                                        return { ...v, packs: newPacks };
+                                      });
+                                      setFormData({ ...formData, variants: newVariants });
+                                    }}
+                                    className="w-full pl-6 pr-3 py-1.5 border border-gray-100 rounded-lg text-xs font-bold text-blue-600 bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">MRP (Original)</label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₹</span>
+                                  <input
+                                    type="number"
+                                    placeholder="MRP"
+                                    value={pack.originalPrice || ''}
+                                    onChange={e => {
+                                      const newVariants = (formData.variants || []).map((v, i) => {
+                                        if (i !== vIndex) return v;
+                                        const newPacks = (v.packs || []).map((p, j) =>
+                                          j === pIndex ? { ...p, originalPrice: e.target.value ? Number(e.target.value) : undefined } : p
+                                        );
+                                        return { ...v, packs: newPacks };
+                                      });
+                                      setFormData({ ...formData, variants: newVariants });
+                                    }}
+                                    className="w-full pl-6 pr-3 py-1.5 border border-gray-100 rounded-lg text-xs text-gray-500 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-400 outline-none transition-all"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* --- STYLES SECTION --- */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-fit">
+                <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <FiGlobe className="text-blue-600" /> Options & Styles
+                  </h3>
+                  <button
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      styles: [...(prev.styles || []), { label: '', priceAdjustment: 0 }]
+                    }))}
+                    className="text-xs bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-full hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                  >
+                    <FiPlus size={12} /> Add Style
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {formData.styles?.map((style, index) => (
+                    <div key={index} className="flex flex-wrap gap-3 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                      <div className="flex-1 min-w-[200px]">
+                        <input
+                          placeholder="Style (e.g. With Cap, Gift Box)"
+                          value={style.label}
+                          onChange={e => {
+                            const newStyles = (formData.styles || []).map((s, i) =>
+                              i === index ? { ...s, label: e.target.value } : s
+                            );
+                            setFormData({ ...formData, styles: newStyles });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+                      <div className="relative w-32 shrink-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">+₹</span>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={style.priceAdjustment === 0 ? '' : style.priceAdjustment}
+                          onChange={e => {
+                            const newStyles = (formData.styles || []).map((s, i) =>
+                              i === index ? { ...s, priceAdjustment: e.target.value === '' ? 0 : Number(e.target.value) } : s
+                            );
+                            setFormData({ ...formData, styles: newStyles });
+                          }}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                        />
+                      </div>
+
+                      <div className="flex-[2] min-w-[200px]">
+                        <input
+                          placeholder="Image URL (Optional)"
+                          value={style.image || ''}
+                          onChange={e => {
+                            const newStyles = (formData.styles || []).map((s, i) =>
+                              i === index ? { ...s, image: e.target.value } : s
+                            );
+                            setFormData({ ...formData, styles: newStyles });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => setFormData(prev => ({ ...prev, styles: prev.styles?.filter((_, i) => i !== index) }))}
+                        className="text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {(!formData.styles || formData.styles.length === 0) && (
+                    <p className="text-center py-6 text-gray-400 text-sm italic">No styles defined.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* --- ADD-ONS SECTION --- */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden h-fit">
+                <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <FiPlus className="text-blue-600" /> Premium Add-Ons
+                  </h3>
+                  <button
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      addOns: [...(prev.addOns || []), { label: '', price: 0 }]
+                    }))}
+                    className="text-xs bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-full hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                  >
+                    <FiPlus size={12} /> Add Add-On
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {formData.addOns?.map((addon, index) => (
+                    <div key={index} className="flex flex-wrap gap-3 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                      <input
+                        placeholder="Add-On (e.g. Extension, Warranty)"
+                        value={addon.label}
+                        onChange={e => {
+                          const newAddOns = (formData.addOns || []).map((a, i) =>
+                            i === index ? { ...a, label: e.target.value } : a
+                          );
+                          setFormData({ ...formData, addOns: newAddOns });
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400 min-w-[150px]"
+                      />
+                      <div className="relative w-32 shrink-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm">₹</span>
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          value={addon.price === 0 ? '' : addon.price}
+                          onChange={e => {
+                            const newAddOns = (formData.addOns || []).map((a, i) =>
+                              i === index ? { ...a, price: e.target.value === '' ? 0 : Number(e.target.value) } : a
+                            );
+                            setFormData({ ...formData, addOns: newAddOns });
+                          }}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setFormData(prev => ({ ...prev, addOns: prev.addOns?.filter((_, i) => i !== index) }))}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remove Add-On"
+                      >
+                        <FiTrash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                  {(!formData.addOns || formData.addOns.length === 0) && (
+                    <p className="text-center py-6 text-gray-400 text-sm italic">No add-ons defined.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* --- COLORS SECTION --- */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">Product Colors</h3>
+                <button
+                  onClick={() => setFormData(prev => ({
+                    ...prev,
+                    colors: [...(prev.colors || []), { label: '', hex: '#000000' }]
+                  }))}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                >
+                  <FiPlus size={12} /> Add Color
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {formData.colors?.map((color, index) => (
+                  <div key={index} className="flex flex-wrap gap-3 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                    <div className="w-12 shrink-0">
+                      <input
+                        type="color"
+                        value={color.hex}
+                        onChange={e => {
+                          const newColors = (formData.colors || []).map((c, i) =>
+                            i === index ? { ...c, hex: e.target.value } : c
+                          );
+                          setFormData({ ...formData, colors: newColors });
+                        }}
+                        className="w-full h-[38px] p-1 border border-gray-200 rounded-lg cursor-pointer shadow-sm"
+                        title="Choose Color"
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-[150px]">
+                      <input
+                        placeholder="Color Name (e.g. Midnight Blue)"
+                        value={color.label}
+                        onChange={e => {
+                          const newColors = (formData.colors || []).map((c, i) =>
+                            i === index ? { ...c, label: e.target.value } : c
+                          );
+                          setFormData({ ...formData, colors: newColors });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+
+                    <div className="flex-[2] min-w-[200px]">
+                      <input
+                        placeholder="Image URL for this color (Optional)"
+                        value={color.image || ''}
+                        onChange={e => {
+                          const newColors = (formData.colors || []).map((c, i) =>
+                            i === index ? { ...c, image: e.target.value } : c
+                          );
+                          setFormData({ ...formData, colors: newColors });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => setFormData(prev => ({ ...prev, colors: prev.colors?.filter((_, i) => i !== index) }))}
+                      className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {(!formData.colors || formData.colors.length === 0) && (
+                  <p className="text-center py-6 text-gray-400 text-sm italic">No colors defined.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Astrological Highlights & Certifications */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Astrological Highlights & Certifications (वैदिक विशेषताएं व सर्टिफिकेशन)</h3>
+              <div className="flex flex-wrap gap-2">
+                {formData.fragrances?.map(frag => (
+                  <span key={frag} className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-full text-xs font-bold border border-amber-200 flex items-center gap-2 shadow-sm">
+                    {frag}
+                    <button
+                      onClick={() => handleRemoveFragrance(frag)}
+                      className="hover:text-red-500 transition-colors"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={handleAddFragrance}
+                  className="px-4 py-1.5 border border-dashed border-gray-300 rounded-full text-gray-500 hover:border-amber-500 hover:text-amber-700 hover:bg-amber-50 flex items-center gap-1 text-xs font-bold transition-all"
+                >
+                  <FiPlus size={14} /> Add Highlight / Certification
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'gift':
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 overflow-hidden">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <FiGift className="text-amber-600" /> Vedic Puja & Consecration (प्राण प्रतिष्ठा संकल्प)
+                  </h3>
+                  <p className="text-sm text-gray-500">Enable personal Vedic Sankalp (Name, Gotra) and energized sanctification options.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold uppercase ${formData.giftOptions?.active ? 'text-green-600' : 'text-gray-400'}`}>
+                    {formData.giftOptions?.active ? 'Active' : 'Inactive'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={formData.giftOptions?.active || false}
+                      onChange={e => setFormData(prev => ({
+                        ...prev,
+                        giftOptions: { ...(prev.giftOptions || { active: false, price: 49, occasions: [] }), active: e.target.checked }
+                      }))}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {formData.giftOptions?.active && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <label className="block text-sm font-bold text-blue-900 mb-1">Puja & Energization Fee (₹)</label>
+                      <p className="text-xs text-blue-700">Special charge for customized Vedic Pran Pratishtha ritual.</p>
+                    </div>
+                    <div className="relative w-32">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold">₹</span>
+                      <input
+                        type="number"
+                        value={formData.giftOptions?.price || 0}
+                        onChange={e => setFormData(prev => ({
+                          ...prev,
+                          giftOptions: { ...prev.giftOptions!, price: Number(e.target.value) }
+                        }))}
+                        className="w-full pl-8 pr-3 py-2 border border-blue-200 rounded-lg text-lg font-bold text-blue-900 outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-bold text-gray-700 uppercase tracking-wider text-xs">Manage Puja Intentions / Occasions</h4>
+                      <button
+                        onClick={handleAddOccasion}
+                        className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 font-bold flex items-center gap-1 transition-all active:scale-95"
+                      >
+                        <FiPlus /> Add Intention / Occasion
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {formData.giftOptions?.occasions.map((occ, oIdx) => (
+                        <div key={occ.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-hidden relative group/occ">
+                          <button
+                            onClick={() => handleRemoveOccasion(oIdx)}
+                            className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+
+                          <div className="mb-4">
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Occasion Title</label>
+                            <input
+                              className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-blue-400 outline-none"
+                              value={occ.label}
+                              onChange={e => {
+                                const newOccasions = [...formData.giftOptions!.occasions];
+                                newOccasions[oIdx].label = e.target.value;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  giftOptions: { ...prev.giftOptions!, occasions: newOccasions }
+                                }));
+                              }}
+                            />
+                            <div className="text-[10px] text-gray-400 font-mono mt-1 opacity-50">ID: {occ.id}</div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Designs (Image URLs)</label>
+                              <button
+                                onClick={() => handleAddDesign(oIdx)}
+                                className="text-[10px] text-blue-600 font-bold hover:underline"
+                              >
+                                + Add Design
+                              </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {occ.designs.map((design, dIdx) => (
+                                <div key={design.id} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
+                                  <img src={design.image} alt="" className="w-full h-full object-cover" />
+                                  <button
+                                    onClick={() => handleRemoveDesign(oIdx, dIdx)}
+                                    className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <FiX size={10} />
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                onClick={() => handleAddDesign(oIdx)}
+                                className="w-16 h-16 rounded-lg border border-dashed border-gray-300 flex items-center justify-center bg-white text-gray-300 hover:border-blue-400 hover:text-blue-400 transition-all"
+                              >
+                                <FiPlus size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {formData.giftOptions?.occasions.length === 0 && (
+                        <div className="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <FiGift className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                          <p className="text-gray-400 text-sm">No occasions added yet.</p>
+                          <button onClick={handleAddOccasion} className="mt-2 text-blue-600 font-bold text-sm hover:underline">Add Birthday, Anniversary, etc.</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'display':
+        const defaultLayout = ['pricing', 'variants', 'attributes', 'addons', 'gift', 'description', 'specs'];
+        const currentLayout = formData.pdpLayout && formData.pdpLayout.length > 0 ? formData.pdpLayout : defaultLayout;
+
+        const moveSection = (index: number, direction: 'up' | 'down') => {
+          const newLayout = [...currentLayout];
+          const targetIndex = direction === 'up' ? index - 1 : index + 1;
+          if (targetIndex >= 0 && targetIndex < newLayout.length) {
+            [newLayout[index], newLayout[targetIndex]] = [newLayout[targetIndex], newLayout[index]];
+            setFormData({ ...formData, pdpLayout: newLayout });
+          }
+        };
+
+        return (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Global Sort Priority</h3>
+              <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Sort Order Number</label>
+                  <p className="text-xs text-gray-500">Lower numbers (1, 2, 3...) appear first on the home and category pages.</p>
+                </div>
+                <input
+                  type="number"
+                  value={formData.sortOrder || 0}
+                  onChange={e => setFormData({ ...formData, sortOrder: Number(e.target.value) })}
+                  className="w-24 px-4 py-2 border border-gray-200 rounded-lg text-lg font-bold text-center outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Product Detail Page Layout</h3>
+              <p className="text-sm text-gray-500 mb-6">Use arrows to reorder how sections appear on the product page.</p>
+
+              <div className="space-y-2">
+                {currentLayout.map((section, idx) => (
+                  <div key={section} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-xl group hover:border-blue-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                      <span className="font-bold text-gray-700 capitalize">{section}</span>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => moveSection(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-2 hover:bg-white rounded-lg text-gray-500 disabled:opacity-30 transition-all hover:text-blue-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" /></svg>
+                      </button>
+                      <button
+                        onClick={() => moveSection(idx, 'down')}
+                        disabled={idx === currentLayout.length - 1}
+                        className="p-2 hover:bg-white rounded-lg text-gray-500 disabled:opacity-30 transition-all hover:text-blue-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return <div>Select a tab</div>;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-800">Products</h1>
+        <button
+          onClick={handleAddNew}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <FiPlus /> Add Product
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl shadow-sm">
+        <div className="flex-1 relative">
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="w-full sm:w-64">
+          <select
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Product</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Category</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Price</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Sort</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Stock</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                Array(5).fill(0).map((_, i) => <ProductSkeletonRow key={i} />)
+              ) : filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <FiPackage className="w-12 h-12 text-gray-300" />
+                      <p className="text-lg font-medium text-gray-400">No products found</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map((product) => (
+                  <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden">
+                          <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{product.title}</div>
+                          <div className="text-xs text-gray-500 uppercase">{product.status}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 capitalize">{product.category}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">₹{product.price}</td>
+                    <td className="px-6 py-4 text-sm font-bold text-blue-600">#{product.sortOrder || 0}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.stock > 10 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {product.stock} in stock
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => handleEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-2"><FiEdit2 /></button>
+                      <button onClick={() => handleDelete(product.id || product._id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><FiTrash2 /></button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Full Screen Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{formData.id ? 'Edit Product' : 'Create New Product'}</h2>
+                <p className="text-sm text-gray-500">Manage all product details, images, and inventory.</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg">Cancel</button>
+                <button onClick={handleSave} className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-2">
+                  <FiCheck /> Save Changes
+                </button>
+              </div>
+            </div>
+
+            {/* Main Layout */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Sidebar Tabs */}
+              <div className="w-64 bg-gray-50 border-r border-gray-100 p-4 space-y-1 overflow-y-auto">
+                <button
+                  onClick={() => setActiveTab('general')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'general' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiPackage className="w-4 h-4" /> General Info
+                </button>
+                <button
+                  onClick={() => setActiveTab('pricing')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'pricing' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiDollarSign className="w-4 h-4" /> Pricing & Stock
+                </button>
+                <button
+                  onClick={() => setActiveTab('media')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'media' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiImage className="w-4 h-4" /> Images & Media
+                </button>
+                <button
+                  onClick={() => setActiveTab('specs')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'specs' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiList className="w-4 h-4" /> Specifications
+                </button>
+                <button
+                  onClick={() => setActiveTab('seo')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'seo' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiGlobe className="w-4 h-4" /> SEO & Marketing
+                </button>
+                <button
+                  onClick={() => setActiveTab('faqs')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'faqs' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiMessageSquare className="w-4 h-4" /> FAQs
+                </button>
+                <button
+                  onClick={() => setActiveTab('configuration')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'configuration' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiLayers className="w-4 h-4" /> Configuration
+                </button>
+                <button
+                  onClick={() => setActiveTab('gift')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'gift' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiGift className="w-4 h-4" /> Puja & Consecration
+                </button>
+                <button
+                  onClick={() => setActiveTab('display')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'display' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <FiLayers className="w-4 h-4" /> Display Settings
+                </button>
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 p-8 overflow-y-auto">
+                {renderTabContent()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Premium Gemstone & Vedic Astrology Theme (#eb651e) */
+  --primary-50: #fff7ed;
+  --primary-100: #ffedd5;
+  --primary-200: #fed7aa;
+  --primary-300: #fdba74;
+  --primary-400: #fb923c;
+  --primary-500: #f97316;
+  --primary-600: #eb651e;  /* Primary Brand Color */
+  --primary-700: #c85012;
+  --primary-800: #9a3809;
+  --primary-900: #7c2d12;
+
+  --accent: #eb651e;       /* Primary Accent */
+  --accent-hover: #d25515;
+  --accent-soft: rgba(235, 101, 30, 0.08);
+  
+  --secondary-ruby: #7b1113;
+  --secondary-sapphire: #0f2c59;
+  
+  --bg-premium: #fcfcfc;
+  --text-main: #171717;
+  --text-gold: #eb651e;
+  --border: #e5e7eb;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    @apply bg-premium text-main;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-serif {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+
+  .flipkart-banner-swiper {
+    padding-bottom: 30px !important;
+  }
+
+  .flipkart-banner-swiper .swiper-pagination {
+    bottom: 0px !important;
+  }
+
+  .flipkart-banner-swiper .swiper-pagination-bullet {
+    width: 6px;
+    height: 6px;
+    opacity: 0.35;
+    background: #111827;
+    /* gray-900 */
+    margin: 0 4px !important;
+  }
+
+  .flipkart-banner-swiper .swiper-button-next,
+  .flipkart-banner-swiper .swiper-button-prev {
+    color: var(--primary-800);
+    background-color: rgba(255, 255, 255, 0.9);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    /* opacity: 0; */
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  @media (min-width: 768px) {
+
+    .flipkart-banner-swiper .swiper-button-next,
+    .flipkart-banner-swiper .swiper-button-prev {
+      width: 40px;
+      height: 40px;
+      opacity: 0;
+    }
+  }
+
+  .flipkart-banner-swiper .swiper-button-next:after,
+  .flipkart-banner-swiper .swiper-button-prev:after {
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  @media (min-width: 768px) {
+
+    .flipkart-banner-swiper .swiper-button-next:after,
+    .flipkart-banner-swiper .swiper-button-prev:after {
+      font-size: 16px;
+    }
+
+    .flipkart-banner-swiper:hover .swiper-button-next,
+    .flipkart-banner-swiper:hover .swiper-button-prev {
+      opacity: 1;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+  }
+}
