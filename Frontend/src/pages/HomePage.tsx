@@ -133,8 +133,8 @@ export const HomePage = () => {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24 md:pb-10">
-      <SEO title="Guru Kripa Astrology & GemsTone - Certified Natural Gemstones" />
-      <h1 className="sr-only">Guru Kripa Astrology & GemsTone - 100% Certified Natural Gemstones, Vedic Astrology Consultations, Pukhraj, Neelam, Emerald & Consecrated Gems</h1>
+      <SEO title="Guru Kripa Astrology & Gems Stone - Certified Natural Gemstones" />
+      <h1 className="sr-only">Guru Kripa Astrology & Gems Stone - 100% Certified Natural Gemstones, Vedic Astrology Consultations, Pukhraj, Neelam, Emerald & Consecrated Gems</h1>
       {/* Category Section Showcase (Controlled by Admin Panel) */}
       <CategoryShowcase categories={categories} />
 

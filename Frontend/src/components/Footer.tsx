@@ -61,8 +61,8 @@ export const Footer = () => {
                                     </div>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-lg font-black tracking-tight text-white uppercase">
-                                        GURU KRIPA <span className="text-[#eb651e]">GEMS</span>
+                                    <span className="text-base sm:text-lg font-black tracking-tight text-white uppercase">
+                                        GURU KRIPA <span className="text-[#eb651e]">ASTROLOGY & GEMS STONE</span>
                                     </span>
                                     <span className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
                                         100% Certified Vedic Gemstones
@@ -70,7 +70,7 @@ export const Footer = () => {
                                 </div>
                             </Link>
                             <p className="text-gray-400 text-xs sm:text-sm mb-6 leading-relaxed max-w-sm">
-                                Authentic Govt. & International Lab-Certified Natural Gemstones. Personally consecrated through Vedic Vedic Pujas by Acharya Ji with 25+ years of astrological expertise.
+                                Authentic Govt. & International Lab-Certified Natural Gemstones. Personally consecrated through Vedic Pujas by Acharya Ji with 25+ years of astrological expertise.
                             </p>
                             <div className="flex gap-3">
                                 <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[#eb651e] hover:text-white transition-all">
@@ -112,7 +112,7 @@ export const Footer = () => {
                                 <span>WhatsApp Consultation</span>
                             </a>
                         </div>
-                        <p className="text-gray-500 text-xs">© 2024 Guru Kripa Astrology & GemsTone. All rights reserved.</p>
+                        <p className="text-gray-500 text-xs">© 2024 Guru Kripa Astrology & Gems Stone. All rights reserved.</p>
                     </div>
                 </div>
             </div>
@@ -213,7 +213,7 @@ export const Footer = () => {
                         </a>
                     </div>
                     <p className="text-center text-[10px] text-gray-500 font-medium uppercase tracking-widest">
-                        © 2024 Guru Kripa Astrology & GemsTone • 100% Certified Vedic Gemstones
+                        © 2024 Guru Kripa Astrology & Gems Stone • 100% Certified Vedic Gemstones
                     </p>
                 </div>
             </div>

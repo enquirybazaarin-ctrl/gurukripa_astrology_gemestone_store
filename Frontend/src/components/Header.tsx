@@ -266,7 +266,7 @@ export const Header = () => {
               
               <div className="flex flex-col leading-tight">
                 <span className="text-sm sm:text-base md:text-xl font-black tracking-tight text-gray-900 uppercase">
-                  GURU KRIPA <span className="text-[#eb651e]">GEMS</span>
+                  GURU KRIPA <span className="text-[#eb651e]">ASTROLOGY & GEMS STONE</span>
                 </span>
                 <span className="text-[8px] sm:text-[9px] md:text-[10px] font-bold text-gray-500 tracking-wider uppercase truncate max-w-[160px] sm:max-w-none">
                   100% Certified Natural Gemstones
@@ -466,11 +466,11 @@ export const Header = () => {
                   💎
                 </div>
                 <div>
-                  <h3 className="text-sm font-black tracking-tight uppercase leading-tight">
-                    GURU KRIPA <span className="text-[#eb651e]">GEMS</span>
+                  <h3 className="text-xs sm:text-sm font-black tracking-tight uppercase leading-tight">
+                    GURU KRIPA <span className="text-[#eb651e]">ASTROLOGY & GEMS STONE</span>
                   </h3>
                   <p className="text-[9px] text-gray-400 uppercase tracking-widest font-semibold">
-                    Vedic Astrology & Gems
+                    100% Certified Vedic Gemstones
                   </p>
                 </div>
               </div>

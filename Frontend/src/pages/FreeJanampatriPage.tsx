@@ -165,7 +165,7 @@ Notes: ${formData.notes || 'None'}`;
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-gray-900 font-sans selection:bg-orange-100 selection:text-orange-900 pb-28 md:pb-16">
       <SEO 
-        title="100% Free Janam Kundli & Gemstone Recommendation | Guru Kripa Gems"
+        title="100% Free Janam Kundli & Gemstone Recommendation | Guru Kripa Astrology & Gems Stone"
         description="Get your 100% Free Vedic Janam Kundli analysis and lucky gemstone recommendation by Acharya Ji. Detailed horoscope, planetary dasha & remedies on WhatsApp."
       />
 

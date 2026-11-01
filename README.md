@@ -1,4 +1,4 @@
-# Guru Kripa Astrology & GemsTone 💎🕉️
+# Guru Kripa Astrology & Gems Stone 💎🕉️
 
 100% Certified Natural Vedic Gemstones & Astrology Consultations E-Commerce Platform.
 

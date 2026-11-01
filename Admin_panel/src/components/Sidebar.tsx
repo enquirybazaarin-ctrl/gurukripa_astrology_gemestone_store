@@ -45,10 +45,10 @@ export const Sidebar = ({ onClose }: SidebarProps = {}) => {
             </div>
           </div>
           <div>
-            <h1 className="text-sm font-black tracking-tight text-white uppercase leading-none">
-              GURU KRIPA <span className="text-[#eb651e]">GEMS</span>
+            <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase leading-tight">
+              GURU KRIPA <span className="text-[#eb651e]">ASTROLOGY & GEMS STONE</span>
             </h1>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1">Astrology Admin</p>
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">Admin Portal</p>
           </div>
         </div>
         {onClose && (

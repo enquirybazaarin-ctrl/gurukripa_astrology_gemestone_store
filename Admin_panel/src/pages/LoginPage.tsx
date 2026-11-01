@@ -67,7 +67,7 @@ export const LoginPage = () => {
               <span className="text-3xl select-none">💎</span>
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">Guru Kripa Gems & Astrology</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">Guru Kripa Astrology & Gems Stone</h1>
           <p className="text-gray-400 text-xs sm:text-sm font-medium">Certified Natural Vedic Gemstones • Admin Control</p>
         </div>
 
