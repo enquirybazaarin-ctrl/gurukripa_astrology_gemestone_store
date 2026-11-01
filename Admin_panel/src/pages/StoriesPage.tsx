@@ -133,8 +133,8 @@ export const StoriesPage = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Manufacturing Stories</h1>
-                    <p className="text-sm text-gray-500">Manage vertical video stories for the homepage</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Astrology & Gemstone Stories</h1>
+                    <p className="text-sm text-gray-500">Manage vertical video stories, Vedic energization rituals, and astrological guidance for the homepage</p>
                 </div>
                 <button
                     onClick={() => {

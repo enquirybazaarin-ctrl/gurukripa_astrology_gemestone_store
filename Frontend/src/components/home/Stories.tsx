@@ -6,7 +6,7 @@ import { StoryCard } from './StoryCard';
 import { StoryModal } from './StoryModal';
 
 
-const DEFAULT_MANUFACTURING_STORIES: Story[] = [
+const DEFAULT_VEDIC_STORIES: Story[] = [
     {
         _id: 'default-story-1',
         title: 'Ceylon & Burma Gemstone Rough Selection & Cutting',
@@ -54,7 +54,7 @@ interface StoriesProps {
 }
 
 export const Stories: React.FC<StoriesProps> = ({ hideHeader = false }) => {
-    const [stories, setStories] = useState<Story[]>(DEFAULT_MANUFACTURING_STORIES);
+    const [stories, setStories] = useState<Story[]>(DEFAULT_VEDIC_STORIES);
     const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
@@ -70,7 +70,7 @@ export const Stories: React.FC<StoriesProps> = ({ hideHeader = false }) => {
                     setActiveStoryIndex(0);
                 }
             } catch (error) {
-                console.error('Failed to fetch stories, using default manufacturing process videos', error);
+                console.error('Failed to fetch stories, using default Vedic gemstone stories', error);
             }
         };
         fetchStories();
