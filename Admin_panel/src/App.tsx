@@ -33,6 +33,7 @@ function App() {
         <Route path="orders" element={<OrdersPage />} />
         <Route path="orders/:id" element={<OrderDetailsPage />} />
         <Route path="bulk-shipping" element={<BulkShippingPage />} />
+        <Route path="enquiries" element={<BulkEnquiriesPage />} />
         <Route path="bulk-enquiries" element={<BulkEnquiriesPage />} />
         <Route path="reviews" element={<ReviewsPage />} />
         <Route path="banners" element={<BannersPage />} />

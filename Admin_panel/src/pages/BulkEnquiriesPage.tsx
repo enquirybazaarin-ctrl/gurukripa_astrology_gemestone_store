@@ -85,8 +85,8 @@ export const BulkEnquiriesPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Vedic Gemstone & Astrology Inquiries</h1>
-          <p className="text-gray-500 text-sm mt-0.5 font-medium">Manage free Kundli recommendations, loose gemstones & astrologer consultation leads</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Customer Enquiries</h1>
+          <p className="text-gray-500 text-sm mt-0.5 font-medium">Manage Free Kundli consultations, Vedic gemstone inquiries & astrologer leads</p>
         </div>
 
         <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl w-full sm:w-auto">

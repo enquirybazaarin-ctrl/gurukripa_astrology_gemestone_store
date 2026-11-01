@@ -205,7 +205,7 @@ export const DashboardPage = () => {
           <div className="flex flex-col sm:flex-row gap-3">
             <Link to="/orders" className="text-center text-primary-900 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-5 py-3 rounded-xl font-bold transition-all border border-indigo-100 flex-1">Orders</Link>
             <Link to="/products" className="text-center text-primary-900 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-5 py-3 rounded-xl font-bold transition-all border border-indigo-100 flex-1">Products</Link>
-            <Link to="/bulk-enquiries" className="text-center text-primary-900 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-5 py-3 rounded-xl font-bold transition-all border border-indigo-100 flex-1">Enquiries</Link>
+            <Link to="/enquiries" className="text-center text-primary-900 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-5 py-3 rounded-xl font-bold transition-all border border-indigo-100 flex-1">Enquiries</Link>
           </div>
         </div>
 

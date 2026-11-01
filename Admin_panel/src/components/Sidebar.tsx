@@ -23,7 +23,7 @@ const menuItems = [
   { path: '/products', icon: FiPackage, label: 'Products' },
   { path: '/orders', icon: FiShoppingBag, label: 'Orders' },
   { path: '/bulk-shipping', icon: FiTruck, label: 'Bulk Shipping' },
-  { path: '/bulk-enquiries', icon: FiMessageSquare, label: 'Bulk Enquiries' },
+  { path: '/enquiries', icon: FiMessageSquare, label: 'Enquiries' },
   { path: '/reviews', icon: FiStar, label: 'Reviews' },
   { path: '/banners', icon: FiImage, label: 'Banners' },
   { path: '/stories', icon: FiVideo, label: 'Stories' },
@@ -63,7 +63,7 @@ export const Sidebar = ({ onClose }: SidebarProps = {}) => {
       <nav className="mt-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path;
+          const isActive = location.pathname === item.path || (item.path === '/enquiries' && location.pathname === '/bulk-enquiries');
 
           return (
             <Link

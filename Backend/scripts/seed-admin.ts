@@ -9,7 +9,11 @@ const seedAdmin = async () => {
     await mongoose.connect(uri);
     
     // Default admin emails to seed
-    const emailsToSeed = ['adminmustafa@rajahomedecor.com'];
+    const emailsToSeed = [
+      'admin@gurukripagems.com',
+      'admin@gurukripagemstone.com',
+      'adminmustafa@rajahomedecor.com'
+    ];
     
     // Add admin email from .env if present
     if (process.env.ADMIN_EMAILS) {
@@ -21,11 +25,11 @@ const seedAdmin = async () => {
       });
     }
     
+    const adminPassword = 'GuruKripa@Admin2026';
+
     for (const email of emailsToSeed) {
       // Check if this specific admin exists
       let admin = await User.findOne({ email: email.toLowerCase() });
-      
-      const adminPassword = 'Raja@Admin#Secure$2026';
       
       if (admin) {
         console.log(`Admin ${email} already exists. Resetting password and ensuring role...`);
@@ -35,18 +39,18 @@ const seedAdmin = async () => {
       } else {
         console.log(`Creating admin: ${email}...`);
         admin = new User({
-          email: email,
+          email: email.toLowerCase(),
           password: adminPassword,
           name: email.split('@')[0],
           role: 'admin',
-          phone: email === 'adminmustafa@rajahomedecor.com' ? '9876543210' : Math.floor(7000000000 + Math.random() * 3000000000).toString()
+          phone: email === 'admin@gurukripagems.com' ? '9323600011' : Math.floor(7000000000 + Math.random() * 3000000000).toString()
         });
         await admin.save();
       }
       console.log(`Success! Admin access configured for: ${email}`);
     }
     
-    console.log(`\nAll admins password set to: Raja@Admin#Secure$2026`);
+    console.log(`\nAll admins password set to: ${adminPassword}`);
 
     process.exit(0);
   } catch (error) {
