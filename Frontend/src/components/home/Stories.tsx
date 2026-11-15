@@ -9,42 +9,42 @@ import { StoryModal } from './StoryModal';
 const DEFAULT_VEDIC_STORIES: Story[] = [
     {
         _id: 'default-story-1',
-        title: 'Ceylon & Burma Gemstone Rough Selection & Cutting',
-        videoUrl: 'https://www.youtube.com/watch?v=2vjPBrBU-TM',
+        title: 'Vedic Gemstones & Rare Rudraksha Sourcing & Selection',
+        videoUrl: 'https://youtu.be/FOjUwtqxmuM?si=rSFwE6nUIRVTv_E8',
         logoUrl: '/banners/Logo/logo2.png',
         isActive: true,
         order: 1,
-        views: 2420,
+        views: 2840,
         createdAt: new Date().toISOString()
     },
     {
         _id: 'default-story-2',
-        title: 'Govt. Gem Lab Spectrometry & Origin Testing',
-        videoUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ',
+        title: 'Govt. Gem Lab Testing & Purity Verification',
+        videoUrl: 'https://youtu.be/kOLjhYsWL0g?si=yX3JSR0Oxwl4Qcb8',
         logoUrl: '/banners/Logo/logo2.png',
         isActive: true,
         order: 2,
-        views: 1850,
+        views: 3120,
         createdAt: new Date().toISOString()
     },
     {
         _id: 'default-story-3',
-        title: 'Vedic Pran Pratishtha & Astrological Energization',
-        videoUrl: 'https://www.youtube.com/watch?v=2vjPBrBU-TM',
+        title: 'Vedic Pran Pratishtha & Astrological Energization Ritual',
+        videoUrl: 'https://youtu.be/7oS-jijIbrw?si=EuOCBID783yaDyZ_',
         logoUrl: '/banners/Logo/logo2.png',
         isActive: true,
         order: 3,
-        views: 3180,
+        views: 4290,
         createdAt: new Date().toISOString()
     },
     {
         _id: 'default-story-4',
         title: 'Panchdhatu & 18K Gold Astrological Ring Crafting',
-        videoUrl: 'https://www.youtube.com/watch?v=J---aiyznGQ',
+        videoUrl: 'https://youtu.be/7Aw8JWv4j_w?si=7Uji7wa07vaytUTq',
         logoUrl: '/banners/Logo/logo2.png',
         isActive: true,
         order: 4,
-        views: 2310,
+        views: 2650,
         createdAt: new Date().toISOString()
     }
 ];

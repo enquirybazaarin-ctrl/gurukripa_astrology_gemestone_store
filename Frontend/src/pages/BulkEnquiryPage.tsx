@@ -1148,8 +1148,8 @@ export const BulkEnquiryPage = () => {
                         <div className="aspect-video bg-black rounded-2xl overflow-hidden mb-4">
                             <iframe 
                                 className="w-full h-full" 
-                                src="https://www.youtube.com/embed/2vjPBrBU-TM?autoplay=1&mute=1" 
-                                title="Manufacturing Process Video"
+                                src="https://www.youtube.com/embed/FOjUwtqxmuM?autoplay=1&mute=1" 
+                                title="Vedic Gemstone Sourcing Video"
                                 allow="autoplay; encrypted-media"
                             />
                         </div>
