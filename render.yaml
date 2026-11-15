@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: gurukripa-gemstone-backend
+    env: node
+    plan: free
+    rootDir: Backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: API_VERSION
+        value: v1
+      - key: MONGODB_URI
+        value: mongodb+srv://enquirybazaarin_db_user:Guruji-2023@cluster0.9xnhxqy.mongodb.net/gurukripa_gemstone?retryWrites=true&w=majority
+      - key: JWT_SECRET
+        value: super_secure_jwt_secret_gurukripa_dev_2026
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: JWT_REFRESH_SECRET
+        value: super_secure_refresh_secret_gurukripa_dev_2026
+      - key: JWT_REFRESH_EXPIRE
+        value: 7d
+      - key: CSRF_SECRET
+        value: csrf_super_secure_secret_gurukripa_dev
+      - key: FRONTEND_URL
+        value: https://gurukripa-astrology-gems-tone.vercel.app
+      - key: ADMIN_URL
+        value: https://gurukripa-astrology-gems-tone-admin.vercel.app
