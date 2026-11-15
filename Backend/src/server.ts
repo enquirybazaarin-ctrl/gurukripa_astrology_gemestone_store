@@ -118,33 +118,15 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
-    await connectDB();
-
     app.listen(PORT, () => {
       const apiBase = `/api/${API_VERSION}`;
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📡 API available at http://localhost:${PORT}${apiBase}`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-
-      // List all registered routes for debugging in dev
-      if (process.env.NODE_ENV !== 'production') {
-        logger.info('Registered Routes:');
-        app._router.stack.forEach((middleware: any) => {
-          if (middleware.route) { // routes registered directly on the app
-            logger.info(`${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
-          } else if (middleware.name === 'router') { // router middleware
-            middleware.handle.stack.forEach((handler: any) => {
-              if (handler.route) {
-                const path = handler.route.path;
-                const methods = Object.keys(handler.route.methods).join(', ').toUpperCase();
-                logger.info(`${methods} ${apiBase}${path}`);
-              }
-            });
-          }
-        });
-      }
     });
+
+    // Connect to MongoDB (with auto-retry if Atlas IP whitelist is pending)
+    await connectDB();
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
