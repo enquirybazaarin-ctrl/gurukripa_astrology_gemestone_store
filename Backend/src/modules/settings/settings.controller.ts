@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Settings } from './settings.model';
 import { CustomError } from '../../common/middleware/errorHandler';
 
-export const getSetting = async (req: Request, res: Response, next: NextFunction) => {
+export const getSetting = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { key } = req.params;
         const isPublicRoute = req.path.includes('/public/'); // Define based on route registration
@@ -10,12 +10,13 @@ export const getSetting = async (req: Request, res: Response, next: NextFunction
         const setting = await Settings.findOne({ key });
 
         if (!setting) {
-            return res.status(200).json({
+            res.status(200).json({
                 success: true,
                 data: {
                     setting: null
                 }
             });
+            return;
         }
 
         // If the route is public, ensure the setting is marked as public
@@ -34,7 +35,7 @@ export const getSetting = async (req: Request, res: Response, next: NextFunction
     }
 };
 
-export const updateSetting = async (req: Request, res: Response, next: NextFunction) => {
+export const updateSetting = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { key } = req.params;
         const { value, isPublic, description } = req.body;
