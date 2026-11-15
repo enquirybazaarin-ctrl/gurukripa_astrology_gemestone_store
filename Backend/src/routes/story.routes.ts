@@ -17,8 +17,8 @@ const storyUpload = upload.fields([
     { name: 'story-logo', maxCount: 1 }
 ]);
 
-router.post('/', authenticate, authorizeAdmin, storyUpload, storyController.createStory);
-router.put('/:id', authenticate, authorizeAdmin, storyUpload, storyController.updateStory);
+router.post('/', authenticate, authorizeAdmin, storyUpload as any, storyController.createStory);
+router.put('/:id', authenticate, authorizeAdmin, storyUpload as any, storyController.updateStory);
 router.delete('/:id', authenticate, authorizeAdmin, storyController.deleteStory);
 router.post('/reorder', authenticate, authorizeAdmin, storyController.reorderStories);
 

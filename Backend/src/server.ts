@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import hpp from 'hpp';
 import helmet from 'helmet';
 
 // ... (imports)
@@ -79,10 +78,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Compression
-app.use(compression());
+app.use(compression() as any);
 
 // MongoDB injection prevention
-app.use(mongoSanitize());
+app.use(mongoSanitize() as any);
 
 // Request logging
 app.use(requestLogger);
