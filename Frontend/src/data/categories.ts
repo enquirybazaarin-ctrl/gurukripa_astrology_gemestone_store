@@ -6,50 +6,48 @@ export interface Category {
     banner?: string;
 }
 
-// Reusing consistent Unsplash images from products.ts
-const CANDLE_JAR_IMG = 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=600&q=80';
-const VOTIVE_IMG = 'https://images.unsplash.com/photo-1602523961358-f9f03dd557db?auto=format&fit=crop&w=600&q=80';
-const GIFT_IMG = 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80';
-const BELL_JAR_IMG = 'https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=600&q=80';
-const CYLINDER_IMG = 'https://images.unsplash.com/photo-1602523961358-f9f03dd557db?auto=format&fit=crop&w=600&q=80';
+const YELLOW_SAPPHIRE_IMG = 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80';
+const BLUE_SAPPHIRE_IMG = 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=600&q=80';
+const EMERALD_IMG = 'https://images.unsplash.com/photo-1615655406736-b37c4fabf923?auto=format&fit=crop&w=600&q=80';
+const RUBY_IMG = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=600&q=80';
+const PEARL_IMG = 'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&w=600&q=80';
 
-// User provided banner for "sbke liye banner" - Applied globally to categories
-const FLIGHT_BANNER = 'https://rukminim2.flixcart.com/fk-p-flap/3240/540/image/1338bd4fc60390d8.jpg?q=60';
+const GEM_BANNER = 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1920&q=80';
 
 export const categories: Category[] = [
     {
         _id: '1',
-        name: 'Candle Jars',
-        slug: 'candle-jars',
-        image: CANDLE_JAR_IMG,
-        banner: FLIGHT_BANNER
+        name: 'Yellow Sapphire (Pukhraj)',
+        slug: 'yellow-sapphire-pukhraj',
+        image: YELLOW_SAPPHIRE_IMG,
+        banner: GEM_BANNER
     },
     {
         _id: '2',
-        name: 'Votives',
-        slug: 'votives',
-        image: VOTIVE_IMG,
-        banner: FLIGHT_BANNER
+        name: 'Blue Sapphire (Neelam)',
+        slug: 'blue-sapphire-neelam',
+        image: BLUE_SAPPHIRE_IMG,
+        banner: GEM_BANNER
     },
     {
         _id: '3',
-        name: 'Gift Hampers',
-        slug: 'gift-hampers',
-        image: GIFT_IMG,
-        banner: FLIGHT_BANNER
+        name: 'Emerald (Panna)',
+        slug: 'emerald-panna',
+        image: EMERALD_IMG,
+        banner: GEM_BANNER
     },
     {
         _id: '4',
-        name: 'Bowls & Thali',
-        slug: 'bowls-thali',
-        image: CYLINDER_IMG,
-        banner: FLIGHT_BANNER
+        name: 'Ruby (Manikya)',
+        slug: 'ruby-manikya',
+        image: RUBY_IMG,
+        banner: GEM_BANNER
     },
     {
         _id: '5',
-        name: 'Bell Jars',
-        slug: 'bell-jars',
-        image: BELL_JAR_IMG,
-        banner: FLIGHT_BANNER
+        name: 'Natural Pearl (Moti)',
+        slug: 'pearl-moti',
+        image: PEARL_IMG,
+        banner: GEM_BANNER
     }
 ];
