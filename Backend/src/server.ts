@@ -8,7 +8,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
 import path from 'path';
-import { connectDB } from './config/database';
+import { connectDB, lastDbError } from './config/database';
 import apiRoutes from './routes';
 import { requestLogger } from './common/middleware/requestLogger';
 import { logger } from './common/utils/logger';
@@ -93,9 +93,28 @@ app.use(rateLimiter);
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath, { maxAge: '30d' }));
 
-// Health check
+// Root & Health check
+import mongoose from 'mongoose';
+app.get('/', (_req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+  res.json({
+    success: true,
+    service: 'Guru Kripa Astrology & Gems Stone API',
+    status: 'online',
+    database: dbConnected ? 'connected' : 'connecting (ensure 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access)',
+    apiBase: `/api/${API_VERSION}`,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const dbConnected = mongoose.connection.readyState === 1;
+  res.json({
+    status: 'ok',
+    database: dbConnected ? 'connected' : 'disconnected',
+    dbError: dbConnected ? null : lastDbError,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Sitemap generator

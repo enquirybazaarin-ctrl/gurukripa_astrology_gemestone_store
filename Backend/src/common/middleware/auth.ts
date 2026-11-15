@@ -24,7 +24,7 @@ export const authenticate = (
       throw new CustomError('Authentication required', 401);
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'gurukripa_jwt_secret_key_2026_astrology_gemstone_9323600011') as {
       id: string;
       email: string;
       phone: string;
@@ -54,7 +54,7 @@ export const optionalAuthenticate = (
       return next();
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'gurukripa_jwt_secret_key_2026_astrology_gemstone_9323600011') as {
       id: string;
       email: string;
       phone: string;

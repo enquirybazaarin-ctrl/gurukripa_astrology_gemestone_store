@@ -37,7 +37,7 @@ export class AuthService {
 
     try {
       // Verify token signature
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as {
+      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'gurukripa_jwt_refresh_secret_key_2026_astrology_gemstone_9323600011') as {
         id: string;
         email: string;
         phone: string;
