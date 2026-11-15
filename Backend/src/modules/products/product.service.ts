@@ -191,6 +191,18 @@ export class ProductService {
       productData.category = await this.resolveCategory(productData.category);
     }
 
+    if (!productData.name && productData.title) {
+      productData.name = productData.title;
+    }
+
+    if (!productData.sku) {
+      const cleanPrefix = (productData.name || 'GEM')
+        .substring(0, 3)
+        .toUpperCase()
+        .replace(/[^A-Z]/g, 'G');
+      productData.sku = `${cleanPrefix}-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+
     const product = new Product(productData);
     return product.save();
   }
@@ -198,6 +210,10 @@ export class ProductService {
   async updateProduct(id: string, updateData: any): Promise<IProduct> {
     if (updateData.category) {
       updateData.category = await this.resolveCategory(updateData.category);
+    }
+
+    if (!updateData.name && updateData.title) {
+      updateData.name = updateData.title;
     }
 
     const product = await Product.findByIdAndUpdate(

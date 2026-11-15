@@ -10,8 +10,12 @@ export const getSetting = async (req: Request, res: Response, next: NextFunction
         const setting = await Settings.findOne({ key });
 
         if (!setting) {
-            // If setting doesn't exist, we return a 404
-            throw new CustomError('Setting not found', 404);
+            return res.status(200).json({
+                success: true,
+                data: {
+                    setting: null
+                }
+            });
         }
 
         // If the route is public, ensure the setting is marked as public
@@ -36,7 +40,8 @@ export const updateSetting = async (req: Request, res: Response, next: NextFunct
         const { value, isPublic, description } = req.body;
 
         // We use findOneAndUpdate with upsert to create if it doesn't exist
-        const setPayload: any = { value, updatedBy: (req as any).user._id };
+        const userId = (req as any).user?._id || (req as any).user?.id;
+        const setPayload: any = { value, updatedBy: userId };
 
         if (isPublic !== undefined) setPayload.isPublic = isPublic;
         if (description !== undefined) setPayload.description = description;

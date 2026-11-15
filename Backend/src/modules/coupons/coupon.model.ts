@@ -62,7 +62,8 @@ const couponSchema = new Schema<ICoupon>(
     },
     validFrom: {
       type: Date,
-      required: true
+      required: true,
+      default: Date.now
     },
     validUntil: {
       type: Date,

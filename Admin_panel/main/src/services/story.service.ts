@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+import { api } from './api';
 
 export interface Story {
     id: string;
@@ -16,32 +14,30 @@ export interface Story {
 
 export const StoryService = {
     async getAllStories(): Promise<Story[]> {
-        const response = await axios.get(`${API_URL}/stories/all`, { withCredentials: true });
+        const response = await api.get('/stories/all');
         return response.data.data.stories.map((s: any) => ({ ...s, id: s._id }));
     },
 
     async createStory(formData: FormData): Promise<Story> {
-        const response = await axios.post(`${API_URL}/stories`, formData, {
+        const response = await api.post('/stories', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
-            withCredentials: true
         });
         return response.data.data.story;
     },
 
     async updateStory(id: string, formData: FormData | any): Promise<Story> {
         const isFormData = formData instanceof FormData;
-        const response = await axios.put(`${API_URL}/stories/${id}`, formData, {
+        const response = await api.put(`/stories/${id}`, formData, {
             headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
-            withCredentials: true
         });
         return response.data.data.story;
     },
 
     async deleteStory(id: string): Promise<void> {
-        await axios.delete(`${API_URL}/stories/${id}`, { withCredentials: true });
+        await api.delete(`/stories/${id}`);
     },
 
     async reorderStories(stories: { id: string; order: number }[]): Promise<void> {
-        await axios.post(`${API_URL}/stories/reorder`, stories, { withCredentials: true });
+        await api.post('/stories/reorder', stories);
     }
 };

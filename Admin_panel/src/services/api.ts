@@ -8,14 +8,19 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('admin_token');
+    const csrfToken = localStorage.getItem('admin_csrf_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method?.toUpperCase() || '')) {
+      config.headers['X-CSRF-Token'] = csrfToken;
     }
     return config;
   },

@@ -43,6 +43,7 @@ export const LoginPage = () => {
         setCredentials({
           user: response.data.user,
           token: response.data.accessToken,
+          csrfToken: response.data.csrfToken,
         })
       );
 
