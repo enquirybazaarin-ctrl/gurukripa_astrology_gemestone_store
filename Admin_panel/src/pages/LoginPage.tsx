@@ -48,7 +48,7 @@ export const LoginPage = () => {
       );
 
       toast.success(`Welcome back, ${response.data.user.name || 'Admin'}!`);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error('Login Failed:', error);
       const message = error.response?.data?.message || 'Invalid credentials or server error';

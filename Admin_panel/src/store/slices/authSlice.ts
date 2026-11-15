@@ -14,8 +14,17 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
+const getStoredUser = (): User | null => {
+  try {
+    const raw = localStorage.getItem('admin_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 const initialState: AuthState = {
-  user: null,
+  user: getStoredUser(),
   token: localStorage.getItem('admin_token'),
   csrfToken: localStorage.getItem('admin_csrf_token'),
   isAuthenticated: !!localStorage.getItem('admin_token'),
@@ -31,6 +40,7 @@ const authSlice = createSlice({
       state.csrfToken = action.payload.csrfToken || null;
       state.isAuthenticated = true;
       localStorage.setItem('admin_token', action.payload.token);
+      localStorage.setItem('admin_user', JSON.stringify(action.payload.user));
       if (action.payload.csrfToken) {
         localStorage.setItem('admin_csrf_token', action.payload.csrfToken);
       }
@@ -42,6 +52,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       localStorage.removeItem('admin_token');
       localStorage.removeItem('admin_csrf_token');
+      localStorage.removeItem('admin_user');
     },
   },
 });
